@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frontier Firm Explorer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+    --blue: #0078D4; --dark-blue: #003B73; --light-blue: #DEECF9;
+    --purple: #5C2D91; --green: #107C10; --yellow: #FFB900;
+    --red: #D13438; --orange: #FF8C00; --teal: #008575;
+    --g10: #FAF9F8; --g20: #F3F2F1; --g30: #EDEBE9; --g50: #D2D0CE; --g90: #605E5C; --g130: #323130;
+    --radius: 12px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--g10); color: var(--g130); line-height: 1.6; }
+
+/* ─── HEADER ─── */
+.header {
+    background: linear-gradient(135deg, var(--dark-blue), var(--blue) 60%, var(--purple));
+    color: white; padding: 16px 32px; position: sticky; top: 0; z-index: 100;
+    box-shadow: var(--shadow-lg); display: flex; align-items: center; justify-content: space-between;
+}
+.header-brand { display: flex; align-items: center; gap: 14px; }
+.header-brand svg { width: 28px; height: 28px; }
+.header-brand h1 { font-size: 18px; font-weight: 700; }
+.header-brand .sub { font-size: 11px; opacity: 0.75; }
+.header-actions { display: flex; gap: 10px; }
+.header-actions button {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+    color: white; padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: 0.2s;
+}
+.header-actions button:hover { background: rgba(255,255,255,0.25); }
+
+/* ─── STEPS NAV ─── */
+.steps-nav {
+    background: white; border-bottom: 1px solid var(--g30); padding: 0 32px;
+    display: flex; gap: 0; overflow-x: auto;
+}
+.step-tab {
+    padding: 14px 24px; font-size: 13px; font-weight: 600; cursor: pointer;
+    border-bottom: 3px solid transparent; color: var(--g90); transition: 0.2s; white-space: nowrap;
+}
+.step-tab:hover { color: var(--g130); background: var(--g10); }
+.step-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.step-tab.locked { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+/* ─── PAGES ─── */
+.page-wrap { max-width: 1100px; margin: 0 auto; padding: 32px; }
+.page { display: none; animation: fadeUp 0.35s ease; }
+.page.active { display: block; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* ─── COMMON ─── */
+.card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px; margin-bottom: 20px; }
+.section-title { font-size: 24px; font-weight: 800; color: var(--dark-blue); margin-bottom: 8px; }
+.section-sub { font-size: 15px; color: var(--g90); margin-bottom: 28px; line-height: 1.7; }
+
+/* ─── WELCOME ─── */
+.hero { text-align: center; padding: 56px 32px; background: linear-gradient(135deg, #fff, var(--light-blue)); border-radius: 16px; margin-bottom: 32px; box-shadow: var(--shadow); }
+.hero h2 { font-size: 32px; font-weight: 800; color: var(--dark-blue); margin-bottom: 12px; }
+.hero p { font-size: 16px; color: var(--g90); max-width: 640px; margin: 0 auto 32px; }
+.hero .field { margin: 0 auto 16px; max-width: 400px; text-align: left; }
+.hero .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--g130); }
+.hero .field input, .hero .field select {
+    width: 100%; padding: 12px 16px; border: 2px solid var(--g30); border-radius: 8px;
+    font-size: 15px; font-family: inherit; background: white; transition: 0.2s;
+}
+.hero .field input:focus, .hero .field select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,120,212,0.12); }
+.hero select { appearance: none; background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23605E5C' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 16px center; padding-right: 40px; cursor: pointer; }
+.primary-btn {
+    display: inline-block; padding: 14px 44px; background: var(--blue); color: white; border: none;
+    border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s;
+    box-shadow: 0 4px 16px rgba(0,120,212,0.3);
+}
+.primary-btn:hover { background: var(--dark-blue); transform: translateY(-1px); }
+.primary-btn:disabled { background: var(--g50); cursor: not-allowed; box-shadow: none; transform: none; }
+
+/* ─── PHASE CARDS ─── */
+.phases-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 32px; }
+.phase-card {
+    border-radius: var(--radius); padding: 28px; text-align: center; border: 2px solid var(--g30);
+    background: white; transition: 0.3s; position: relative; overflow: hidden;
+}
+.phase-card.highlight { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,120,212,0.12); }
+.phase-card .num { font-size: 48px; font-weight: 900; line-height: 1; margin-bottom: 8px; }
+.phase-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.phase-card .pattern { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+.phase-card p { font-size: 13px; color: var(--g90); line-height: 1.6; }
+.phase-card.p1 { border-top: 4px solid var(--blue); } .phase-card.p1 .num, .phase-card.p1 .pattern { color: var(--blue); }
+.phase-card.p2 { border-top: 4px solid var(--purple); } .phase-card.p2 .num, .phase-card.p2 .pattern { color: var(--purple); }
+.phase-card.p3 { border-top: 4px solid var(--green); } .phase-card.p3 .num, .phase-card.p3 .pattern { color: var(--green); }
+
+/* ─── EXPLORE (SCENARIOS) ─── */
+.fn-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; }
+.fn-tab {
+    padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: 2px solid var(--g30); background: white; transition: 0.2s;
+}
+.fn-tab:hover { border-color: var(--blue); }
+.fn-tab.active { background: var(--blue); color: white; border-color: var(--blue); }
+.scenario-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.scenario-card {
+    border-radius: var(--radius); padding: 20px; background: white; border: 1px solid var(--g30);
+    box-shadow: var(--shadow); transition: 0.2s;
+}
+.scenario-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+.sc-phase { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; margin-bottom: 10px; }
+.sc-phase.p1 { background: var(--light-blue); color: var(--dark-blue); }
+.sc-phase.p2 { background: #EDE0F7; color: var(--purple); }
+.sc-phase.p3 { background: #DFF6DD; color: var(--green); }
+.scenario-card h4 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.scenario-card p { font-size: 13px; color: var(--g90); line-height: 1.6; }
+.sc-rec { margin-top: 12px; padding: 12px; background: linear-gradient(135deg, #DFF6DD, #E8F5E9); border-radius: 8px; border-left: 3px solid var(--green); font-size: 12px; line-height: 1.5; }
+.sc-rec strong { color: #0B6A0B; }
+.industry-banner { padding: 16px 20px; background: #FFF8E1; border-radius: 10px; border-left: 4px solid var(--yellow); margin-bottom: 24px; font-size: 14px; }
+
+/* ─── ASSESS ─── */
+.assess-dimension { margin-bottom: 32px; }
+.assess-dimension h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.assess-dimension .dim-desc { font-size: 13px; color: var(--g90); margin-bottom: 14px; }
+.option-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.opt-card {
+    padding: 16px; border: 2px solid var(--g30); border-radius: 10px; cursor: pointer;
+    transition: 0.2s; background: white; position: relative;
+}
+.opt-card:hover { border-color: var(--blue); background: #F5FAFF; }
+.opt-card.selected { border-color: var(--blue); background: var(--light-blue); box-shadow: 0 0 0 3px rgba(0,120,212,0.15); }
+.opt-card .opt-phase { font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+.opt-card .opt-label { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.opt-card .opt-desc { font-size: 12px; color: var(--g90); line-height: 1.5; }
+.opt-card.selected::after { content: '✓'; position: absolute; top: 10px; right: 12px; font-size: 18px; color: var(--blue); font-weight: 700; }
+
+.result-box { padding: 32px; border-radius: 16px; text-align: center; margin-top: 32px; border: 2px solid; }
+.result-box .phase-num { font-size: 72px; font-weight: 900; line-height: 1; }
+.result-box h3 { font-size: 24px; font-weight: 700; margin: 8px 0; }
+.result-box .pattern-text { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+.result-box p { font-size: 14px; color: var(--g90); max-width: 600px; margin: 0 auto; line-height: 1.7; }
+.result-box.r1 { border-color: var(--blue); background: linear-gradient(135deg, #fff, #E3F2FD); }
+.result-box.r1 .phase-num, .result-box.r1 .pattern-text { color: var(--blue); }
+.result-box.r1to2 { border-color: #3A5CAD; background: linear-gradient(135deg, #E3F2FD, #EDE0F7); }
+.result-box.r1to2 .phase-num, .result-box.r1to2 .pattern-text { color: #3A5CAD; }
+.result-box.r2 { border-color: var(--purple); background: linear-gradient(135deg, #fff, #F3E5F5); }
+.result-box.r2 .phase-num, .result-box.r2 .pattern-text { color: var(--purple); }
+.result-box.r2to3 { border-color: #2E7D5E; background: linear-gradient(135deg, #F3E5F5, #E8F5E9); }
+.result-box.r2to3 .phase-num, .result-box.r2to3 .pattern-text { color: #2E7D5E; }
+.result-box.r3 { border-color: var(--green); background: linear-gradient(135deg, #fff, #E8F5E9); }
+.result-box.r3 .phase-num, .result-box.r3 .pattern-text { color: var(--green); }
+
+.dim-scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 24px; }
+.dim-score-card { padding: 16px; border-radius: 10px; background: white; border: 1px solid var(--g30); text-align: center; }
+.dim-score-card .dim-name { font-size: 12px; font-weight: 600; color: var(--g90); margin-bottom: 4px; }
+.dim-score-card .dim-value { font-size: 28px; font-weight: 800; }
+.dim-score-card .dim-label { font-size: 11px; margin-top: 2px; }
+
+/* ─── STRATEGY QUESTIONS ─── */
+.strat-question { margin-bottom: 24px; }
+.strat-question label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.strat-question .q-hint { font-size: 13px; color: var(--g90); margin-bottom: 10px; }
+.strat-question textarea {
+    width: 100%; min-height: 100px; padding: 14px; border: 2px solid var(--g30); border-radius: 10px;
+    font-size: 14px; font-family: inherit; resize: vertical; transition: 0.2s; line-height: 1.6;
+}
+.strat-question textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,120,212,0.12); }
+
+/* ─── REPORT ─── */
+.report-section { margin-bottom: 28px; }
+.report-section h3 { font-size: 18px; font-weight: 700; color: var(--dark-blue); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--light-blue); }
+.rec-list { list-style: none; }
+.rec-list li { padding: 12px 16px; border-left: 3px solid var(--blue); background: var(--g10); border-radius: 0 8px 8px 0; margin-bottom: 8px; font-size: 14px; line-height: 1.6; }
+.rec-list li strong { color: var(--dark-blue); }
+.next-steps-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.next-step { padding: 20px; border-radius: var(--radius); text-align: center; }
+.next-step.s1 { background: linear-gradient(135deg, var(--light-blue), #E3F2FD); border: 1px solid #B3D4FC; }
+.next-step.s2 { background: linear-gradient(135deg, #EDE0F7, #F3E5F5); border: 1px solid #D1C4E9; }
+.next-step.s3 { background: linear-gradient(135deg, #DFF6DD, #E8F5E9); border: 1px solid #A5D6A7; }
+.next-step .step-num { font-size: 32px; font-weight: 900; margin-bottom: 6px; }
+.next-step h4 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.next-step p { font-size: 12px; color: var(--g90); line-height: 1.5; }
+
+/* ─── NAV BUTTONS ─── */
+.page-nav { display: flex; justify-content: space-between; margin-top: 32px; }
+.nav-btn {
+    padding: 12px 32px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: none; transition: 0.2s;
+}
+.nav-btn.back { background: var(--g20); color: var(--g130); }
+.nav-btn.back:hover { background: var(--g30); }
+.nav-btn.next { background: var(--blue); color: white; }
+.nav-btn.next:hover { background: var(--dark-blue); }
+
+/* ─── PDF PROGRESS ─── */
+.pdf-bar { display: none; position: fixed; bottom: 24px; right: 24px; background: white; padding: 16px 24px; border-radius: 10px; box-shadow: var(--shadow-lg); z-index: 400; font-size: 13px; font-weight: 600; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 900px) {
+    .phases-row, .next-steps-grid, .dim-scores { grid-template-columns: 1fr; }
+    .page-wrap { padding: 16px; }
+    .hero { padding: 32px 16px; }
+    .header { padding: 12px 16px; flex-wrap: wrap; gap: 10px; }
+    .option-cards { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+    .option-cards { grid-template-columns: 1fr; }
+}
+
+@media print {
+    .header, .steps-nav, .page-nav, .header-actions { display: none !important; }
+    .page { display: block !important; page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═════ HEADER ═════ -->
+<header class="header">
+    <div class="header-brand">
+        <svg viewBox="0 0 23 23" fill="none"><rect width="11" height="11" fill="#F25022"/><rect x="12" width="11" height="11" fill="#7FBA00"/><rect y="12" width="11" height="11" fill="#00A4EF"/><rect x="12" y="12" width="11" height="11" fill="#FFB900"/></svg>
+        <div><h1>Frontier Firm Explorer</h1><div class="sub">Your AI Transformation Journey · Microsoft</div></div>
+    </div>
+    <div class="header-actions">
+        <button id="pdfBtn" style="display:none" onclick="exportPDF()">📥 Download PDF</button>
+        <button onclick="location.reload()">🔄 Start Over</button>
+    </div>
+</header>
+
+<!-- ═════ STEPS NAV ═════ -->
+<nav class="steps-nav" id="stepsNav">
+    <div class="step-tab active" data-step="welcome" onclick="goStep('welcome')">1. Welcome</div>
+    <div class="step-tab locked" data-step="learn" onclick="goStep('learn')">2. Learn</div>
+    <div class="step-tab locked" data-step="explore" onclick="goStep('explore')">3. Explore</div>
+    <div class="step-tab locked" data-step="assess" onclick="goStep('assess')">4. Assess</div>
+    <div class="step-tab locked" data-step="strategy" onclick="goStep('strategy')">5. Strategy</div>
+    <div class="step-tab locked" data-step="report" onclick="goStep('report')">6. Report</div>
+</nav>
+
+<!-- ═════ PDF PROGRESS ═════ -->
+<div class="pdf-bar" id="pdfBar">📄 Generating PDF… <span id="pdfPct">0%</span></div>
+
+<!-- ═════ MAIN ═════ -->
+<div class="page-wrap" id="pageWrap">
+
+<!-- ──── 1. WELCOME ──── -->
+<div class="page active" id="page-welcome">
+    <div class="hero">
+        <h2>Become a Frontier Firm</h2>
+        <p>Discover where your organization stands on the AI transformation journey, explore scenarios tailored to your industry, and get a personalized roadmap to become a Frontier Firm.</p>
+        <div class="field">
+            <label for="companyName">Company Name</label>
+            <input type="text" id="companyName" placeholder="e.g. Contoso Ltd." oninput="checkWelcome()">
+        </div>
+        <div class="field">
+            <label for="industry">Industry</label>
+            <select id="industry" onchange="checkWelcome()">
+                <option value="">— Select your industry —</option>
+                <option value="Financial Services">Financial Services & Banking</option>
+                <option value="Healthcare">Healthcare & Life Sciences</option>
+                <option value="Manufacturing">Manufacturing & Industrial</option>
+                <option value="Retail">Retail & Consumer Goods</option>
+                <option value="Technology">Technology & Software</option>
+                <option value="Energy">Energy & Utilities</option>
+                <option value="Telecommunications">Telecommunications</option>
+                <option value="Professional Services">Professional Services & Consulting</option>
+                <option value="Public Sector">Public Sector & Government</option>
+                <option value="Education">Education & Research</option>
+                <option value="Media">Media & Entertainment</option>
+                <option value="Transportation">Transportation & Logistics</option>
+            </select>
+        </div>
+        <button class="primary-btn" id="welcomeBtn" disabled onclick="startJourney()">Start Your Journey →</button>
+    </div>
+</div>
+
+<!-- ──── 2. LEARN ──── -->
+<div class="page" id="page-learn">
+    <h2 class="section-title">What is a Frontier Firm?</h2>
+    <p class="section-sub">A Frontier Firm is a <strong>human-led, AI-operated</strong> organization. Humans set strategic intent, maintain values, and make judgment calls — while AI agents handle execution at scale. It's not about replacing people; it's about unlocking human potential with AI.</p>
+
+    <div class="phases-row">
+        <div class="phase-card p1">
+            <div class="num">1</div>
+            <h3>Foundation</h3>
+            <div class="pattern">Human with Assistant</div>
+            <p>AI augments individual work. People use Copilot to draft, summarize, analyze, and create — building trust and developing AI fluency across the organization.</p>
+            <div style="margin-top:16px; padding:12px; background:var(--light-blue); border-radius:8px; font-size:12px; text-align:left; line-height:1.6">
+                <strong>What this looks like:</strong><br>
+                • Copilot helps draft emails and meeting summaries<br>
+                • Teams use AI for document creation and data analysis<br>
+                • Basic AI governance and acceptable use policies in place
+            </div>
+        </div>
+        <div class="phase-card p2">
+            <div class="num">2</div>
+            <h3>Expansion</h3>
+            <div class="pattern">Human-Agent Teams</div>
+            <p>AI agents handle parts of workflows while humans review and approve. Teams begin working alongside agents, with defined decision rights and oversight structures.</p>
+            <div style="margin-top:16px; padding:12px; background:#EDE0F7; border-radius:8px; font-size:12px; text-align:left; line-height:1.6">
+                <strong>What this looks like:</strong><br>
+                • AI agents triage support tickets and draft responses<br>
+                • Agents generate financial reports with human review<br>
+                • Skills-based roles emerge; AI is part of team OKRs
+            </div>
+        </div>
+        <div class="phase-card p3">
+            <div class="num">3</div>
+            <h3>Frontier</h3>
+            <div class="pattern">Human-Led, Agent-Operated</div>
+            <p>Agents run entire workflows end-to-end. Humans manage intent, set guardrails, handle exceptions, and maintain strategic oversight — this is the Frontier Firm.</p>
+            <div style="margin-top:16px; padding:12px; background:#DFF6DD; border-radius:8px; font-size:12px; text-align:left; line-height:1.6">
+                <strong>What this looks like:</strong><br>
+                • Agent orchestration handles multi-step processes<br>
+                • Board-level AI governance and continuous optimization<br>
+                • "Work Chart" model: agents are part of the org structure
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="industryContext"></div>
+
+    <div class="page-nav">
+        <button class="nav-btn back" onclick="goStep('welcome')">← Back</button>
+        <button class="nav-btn next" onclick="goStep('explore')">Explore Scenarios →</button>
+    </div>
+</div>
+
+<!-- ──── 3. EXPLORE ──── -->
+<div class="page" id="page-explore">
+    <h2 class="section-title">AI Scenarios for <span id="exploreIndustry"></span></h2>
+    <p class="section-sub">Microsoft recommends starting with high-impact scenarios in your industry. Below are the key business functions and their AI transformation scenarios — organized by phase. Click a function to explore.</p>
+
+    <div id="industryBanner" class="industry-banner"></div>
+    <div class="fn-tabs" id="fnTabs"></div>
+    <div class="scenario-grid" id="scenarioGrid"></div>
+
+    <div class="page-nav">
+        <button class="nav-btn back" onclick="goStep('learn')">← Back</button>
+        <button class="nav-btn next" onclick="goStep('assess')">Assess Your Readiness →</button>
+    </div>
+</div>
+
+<!-- ──── 4. ASSESS ──── -->
+<div class="page" id="page-assess">
+    <h2 class="section-title">Where Are You Today?</h2>
+    <p class="section-sub">Select the card that best describes your organization's current state for each dimension. This will determine your Frontier Firm phase.</p>
+
+    <div id="assessCards"></div>
+
+    <div id="assessResult" style="display:none"></div>
+
+    <div class="page-nav">
+        <button class="nav-btn back" onclick="goStep('explore')">← Back</button>
+        <button class="nav-btn next" id="toStrategyBtn" disabled onclick="goStep('strategy')">Continue to Strategy →</button>
+    </div>
+</div>
+
+<!-- ──── 5. STRATEGY ──── -->
+<div class="page" id="page-strategy">
+    <h2 class="section-title">Your Strategic Priorities</h2>
+    <p class="section-sub">Share a few thoughts about your AI transformation goals. These will be included in your personalized report for our team to prepare for your engagement.</p>
+
+    <div class="card">
+        <div class="strat-question">
+            <label>1. What is the #1 business outcome you want AI to help achieve in the next 12 months?</label>
+            <div class="q-hint">Think about revenue growth, cost reduction, customer satisfaction, employee productivity, or competitive advantage.</div>
+            <textarea id="stratQ1" placeholder="e.g. We want to reduce our customer service response time by 50% while maintaining quality…"></textarea>
+        </div>
+        <div class="strat-question">
+            <label>2. What is the biggest barrier to AI adoption in your organization today?</label>
+            <div class="q-hint">Consider skills gaps, data readiness, governance concerns, cultural resistance, budget, or lack of clear use cases.</div>
+            <textarea id="stratQ2" placeholder="e.g. Our biggest challenge is that most employees don't know how to use Copilot effectively…"></textarea>
+        </div>
+    </div>
+
+    <div class="page-nav">
+        <button class="nav-btn back" onclick="goStep('assess')">← Back</button>
+        <button class="nav-btn next" onclick="buildReport()">Generate My Report →</button>
+    </div>
+</div>
+
+<!-- ──── 6. REPORT ──── -->
+<div class="page" id="page-report">
+    <div id="reportContent"></div>
+    <div class="page-nav">
+        <button class="nav-btn back" onclick="goStep('strategy')">← Back</button>
+        <button class="nav-btn next" onclick="exportPDF()">📥 Download PDF Report</button>
+    </div>
+</div>
+
+</div><!-- /page-wrap -->
+
+<script>
+// ═══════════════════════════════════════
+// KNOWLEDGE BASE
+// ═══════════════════════════════════════
+const PHASES = {
+    1: { name: 'Foundation', pattern: 'Human with Assistant', color: '#0078D4', cssClass: 'r1',
+         label: 'Phase 1', shortLabel: '1',
+         description: 'AI augments individual work. People use Microsoft 365 Copilot to draft, summarize, analyze, and create — building trust and developing organizational AI fluency.',
+         opModel: 'Lightweight AI CoE, existing hierarchy intact, basic AI governance council.',
+         workforce: 'AI literacy programs, culture of experimentation, leadership role-modeling.',
+         technology: 'Data readiness (Fabric), Cloud + Azure OpenAI, Security & Responsible AI foundations.' },
+    1.5: { name: 'Foundation → Expansion', pattern: 'Building Toward Human-Agent Teams', color: '#3A5CAD', cssClass: 'r1to2',
+         label: 'Phase 1 → 2', shortLabel: '1→2',
+         description: 'Your organization has emerging AI capabilities — some Copilot usage, early agent experiments, or growing leadership support. However, key pillars like broad Copilot adoption, agent maturity, or data readiness still need strengthening before you can truly operate with human-agent teams.',
+         opModel: 'Forming an AI CoE, starting to define agent use cases and decision rights.',
+         workforce: 'Champions emerging, AI training programs launching, experimentation encouraged.',
+         technology: 'Data consolidation underway, first agent pilots in progress, governance forming.' },
+    2: { name: 'Expansion', pattern: 'Human-Agent Teams', color: '#5C2D91', cssClass: 'r2',
+         label: 'Phase 2', shortLabel: '2',
+         description: 'AI agents handle parts of workflows while humans review and approve. Teams begin working alongside agents, with defined decision rights and oversight structures.',
+         opModel: 'Human-AI teams with defined decision rights, agent dashboards, formal AI CoE.',
+         workforce: 'Skills-based talent models, AI objectives in OKRs, emerging fusion roles.',
+         technology: 'Scalable agent platforms (Copilot Studio), embedded governance, monitoring.' },
+    2.5: { name: 'Expansion → Frontier', pattern: 'Approaching Agent-Operated Model', color: '#2E7D5E', cssClass: 'r2to3',
+         label: 'Phase 2 → 3', shortLabel: '2→3',
+         description: 'Your organization has mature human-agent teams with agents scaling across functions. You are approaching the Frontier — but full autonomous operations require completing your governance framework, data integration, or agent orchestration capabilities.',
+         opModel: 'Expanding agent orchestration, piloting autonomous workflows, strengthening board-level oversight.',
+         workforce: 'Fusion roles emerging, AI fluency widespread, organizational redesign in discussion.',
+         technology: 'Multi-agent orchestration pilots, advanced data integration, scaling automation.' },
+    3: { name: 'Frontier', pattern: 'Human-Led, Agent-Operated', color: '#107C10', cssClass: 'r3',
+         label: 'Phase 3', shortLabel: '3',
+         description: 'Agents run entire workflows end-to-end. Humans manage intent, set guardrails, handle exceptions, and maintain strategic oversight.',
+         opModel: 'Network-based "Work Chart" where agents are peers, board-level AI oversight.',
+         workforce: 'Continuous learning culture, AI oversight as a core role, merged functions.',
+         technology: 'Central agent orchestration (Agent 365), autonomous optimization, full data integration.' }
+};
+
+const FUNCTIONS = {
+    Sales: { icon: '💰', color: '#0078D4',
+        scenarios: [
+            { name: 'Lead Scoring & Nurture', phase: 1, desc: 'Use Copilot to analyze lead behavior and draft personalized outreach. AI suggests next-best-action for each prospect.', rec: 'Start with Copilot for Sales in Outlook and Teams. Use meeting recap to capture buyer signals automatically.' },
+            { name: 'Forecasting & Pipeline Insights', phase: 1, desc: 'Copilot analyzes CRM data to surface pipeline risks, deal velocity trends, and forecast accuracy improvements.', rec: 'Deploy Copilot in Excel and Power BI for pipeline analysis. Create a weekly AI-powered forecast review cadence.' },
+            { name: 'Sales Enablement Agent', phase: 2, desc: 'An AI agent prepares reps before every meeting — pulling account history, recent news, competitor intel, and recommended talking points.', rec: 'Build a Sales Prep Agent in Copilot Studio that pulls from CRM, SharePoint knowledge base, and recent communications.' },
+            { name: 'Customer Self-Service', phase: 2, desc: 'Deploy a customer-facing agent that handles product inquiries, pricing questions, and order status — routing complex requests to reps.', rec: 'Start with a customer FAQ agent, then expand to handle quoting and order management with human approval.' },
+            { name: 'Autonomous Pipeline Management', phase: 3, desc: 'Agents handle lead routing, follow-up cadence, proposal drafting, and forecast updates autonomously. Reps focus on relationship decisions.', rec: 'This requires mature data foundations and agent orchestration. Target this after achieving 65%+ Copilot adoption.' }
+        ]
+    },
+    Marketing: { icon: '📣', color: '#5C2D91',
+        scenarios: [
+            { name: 'Content Creation & Personalization', phase: 1, desc: 'Copilot drafts blog posts, social content, and email campaigns. Marketers refine and personalize for specific audience segments.', rec: 'Use Copilot in Word for long-form content, PowerPoint for visual assets, and Outlook for email campaigns.' },
+            { name: 'Campaign Performance Analysis', phase: 1, desc: 'Copilot analyzes campaign data across channels, identifies top-performing content, and recommends optimization strategies.', rec: 'Connect campaign data to Excel or Power BI. Use Copilot Chat to ask natural language questions about campaign ROI.' },
+            { name: 'Demand Generation Agent', phase: 2, desc: 'An agent orchestrates multi-channel campaigns — generating content variants, scheduling distribution, and adjusting based on engagement data.', rec: 'Build a Campaign Agent in Copilot Studio that integrates with your marketing automation platform.' },
+            { name: 'Customer Insights Agent', phase: 2, desc: 'AI agent continuously analyzes customer behavior, segments audiences, and surfaces emerging trends for marketing strategy.', rec: 'Connect to Dynamics 365 Customer Insights and deploy an agent that surfaces weekly audience intelligence briefings.' },
+            { name: 'Autonomous Campaign Orchestration', phase: 3, desc: 'Agents plan, execute, and optimize campaigns end-to-end — adjusting messaging, budget, and channel mix in real-time.', rec: 'Requires advanced data maturity and cross-system integration. Marketers set brand guardrails and strategic objectives.' }
+        ]
+    },
+    'Customer Service': { icon: '🎧', color: '#008575',
+        scenarios: [
+            { name: 'Issue Diagnosis & Summary', phase: 1, desc: 'Copilot summarizes long case histories, suggests solutions from your knowledge base, and drafts professional responses.', rec: 'Deploy Copilot for Service. Start with case summary and knowledge article suggestions to reduce handle time.' },
+            { name: 'Self-Help Knowledge Agent', phase: 1, desc: 'A customer-facing chatbot answers common questions using your knowledge base, reducing ticket volume and wait times.', rec: 'Build a Self-Help Agent in Copilot Studio grounded on your FAQ and support documentation in SharePoint.' },
+            { name: 'Triage & Resolution Agent', phase: 2, desc: 'Agent categorizes incoming cases, suggests or auto-applies solutions for known issues, and drafts responses for agent review.', rec: 'Integrate with your ticketing system. Set confidence thresholds — auto-resolve above 90%, suggest below.' },
+            { name: 'Proactive Outreach Agent', phase: 2, desc: 'AI detects at-risk customers based on usage patterns and proactively triggers outreach before issues escalate.', rec: 'Connect customer health data to Copilot Studio. Build alerts and automated outreach workflows.' },
+            { name: 'End-to-End Autonomous Resolution', phase: 3, desc: 'Agents handle diagnosis, resolution, follow-up, and satisfaction surveys — escalating only complex or sensitive cases to humans.', rec: 'Target 60%+ automated resolution. Requires mature knowledge base and strong governance for quality assurance.' }
+        ]
+    },
+    Finance: { icon: '📊', color: '#107C10',
+        scenarios: [
+            { name: 'Financial Reporting Assist', phase: 1, desc: 'Copilot in Excel analyzes financial data, creates variance reports, and drafts executive summaries from spreadsheet data.', rec: 'Start with Copilot in Excel for month-end reporting. Train finance teams on data analysis prompts.' },
+            { name: 'Procure-to-Pay Analysis', phase: 1, desc: 'Copilot reviews invoices, matches purchase orders, and flags anomalies for human review to streamline procurement workflows.', rec: 'Deploy Copilot to AP teams for invoice processing efficiency. Measure error rate reduction and cycle time.' },
+            { name: 'FP&A Forecasting Agent', phase: 2, desc: 'Agent automates rolling forecasts by pulling actuals from ERP, applying models, and generating variance analyses with commentary.', rec: 'Build a Forecasting Agent that integrates with your ERP and general ledger. Human CFO reviews and approves.' },
+            { name: 'Risk & Compliance Agent', phase: 2, desc: 'Agent monitors transactions for compliance violations, flags suspicious patterns, and generates audit-ready documentation.', rec: 'Connect to transaction data and regulatory rule sets. Deploy with compliance team oversight and escalation rules.' },
+            { name: 'Autonomous Financial Operations', phase: 3, desc: 'Agents handle invoice processing, three-way matching, compliance checks, and rolling forecasts — with finance leaders managing exceptions.', rec: 'Requires complete data integration across ERP, banking, and GL. Finance leaders set risk thresholds and approval policies.' }
+        ]
+    },
+    HR: { icon: '👥', color: '#FF8C00',
+        scenarios: [
+            { name: 'Recruitment & Onboarding Assist', phase: 1, desc: 'Copilot drafts job descriptions, screens resumes, and creates personalized onboarding plans for new hires.', rec: 'Use Copilot in Word for job postings. Deploy a Copilot Chat prompt library for common HR tasks.' },
+            { name: 'Employee FAQ & Policy Agent', phase: 1, desc: 'A chatbot grounded on your HR policies answers employee questions about benefits, leave, compliance, and procedures 24/7.', rec: 'Build an HR FAQ Agent in Copilot Studio. Ground it on your employee handbook and policy documents in SharePoint.' },
+            { name: 'Skills Inferencing Agent', phase: 2, desc: 'Agent analyzes employee profiles, project history, and learning records to map capability gaps and recommend development paths.', rec: 'Connect to your HRIS and learning platform. Use Viva Skills or build a custom Skills Agent.' },
+            { name: 'Workforce Planning Agent', phase: 2, desc: 'AI forecasts attrition risk, identifies skill gaps against strategic priorities, and recommends hiring and reskilling plans.', rec: 'Integrate workforce data with business strategy dashboards. Agent provides monthly workforce intelligence reports.' },
+            { name: 'Autonomous Workforce Orchestration', phase: 3, desc: 'Agents continuously analyze, predict, and adapt workforce plans — managing talent pipelines, learning paths, and role transitions.', rec: 'HR leaders focus on culture, ethical AI governance, and transformation vision. Agents handle operational execution.' }
+        ]
+    },
+    IT: { icon: '🔧', color: '#D13438',
+        scenarios: [
+            { name: 'IT Helpdesk Copilot Assist', phase: 1, desc: 'Copilot helps IT support staff diagnose issues faster by summarizing ticket history and suggesting known solutions.', rec: 'Deploy Copilot for IT. Create a curated knowledge base of common issues and resolutions in SharePoint.' },
+            { name: 'Self-Service IT Agent', phase: 1, desc: 'An agent handles L1 support autonomously — password resets, software provisioning, VPN issues, and FAQ.', rec: 'Build an IT Helpdesk Agent in Copilot Studio. Target 40% ticket deflection within 90 days.' },
+            { name: 'Change Management Agent', phase: 2, desc: 'Agent assesses change risk, generates impact analysis, routes approvals, and tracks implementation — with IT reviewers approving.', rec: 'Integrate with your ITSM platform. Agent handles the workflow; humans make risk decisions.' },
+            { name: 'Security Operations Agent', phase: 2, desc: 'AI monitors security alerts, correlates threat intelligence, and recommends responses — with security analysts validating actions.', rec: 'Deploy with Microsoft Sentinel and Security Copilot. Agent handles alert triage; analysts handle investigation.' },
+            { name: 'Autonomous IT Operations', phase: 3, desc: 'Agents handle incident detection, root cause analysis, patch deployment, and security response — with IT leaders managing architecture.', rec: 'Requires mature monitoring, CI/CD pipelines, and security automation. IT leads set policy and architecture vision.' }
+        ]
+    },
+    Legal: { icon: '⚖️', color: '#5C2D91',
+        scenarios: [
+            { name: 'Contract Review Assist', phase: 1, desc: 'Copilot in Word summarizes contracts, highlights key clauses, and compares against your clause library and standard playbook.', rec: 'Start with Copilot in Word for contract review. Build a clause library in SharePoint for AI reference.' },
+            { name: 'Legal Research Copilot', phase: 1, desc: 'Copilot assists lawyers with legal research, summarizing case law, regulatory changes, and precedent relevant to ongoing matters.', rec: 'Use Copilot Chat grounded on legal databases and internal research repositories.' },
+            { name: 'Contract Review Agent', phase: 2, desc: 'Agent checks clauses against your playbook, flags non-standard terms, suggests redlines, and routes for lawyer approval.', rec: 'Build a Contract Agent in Copilot Studio. Set confidence thresholds for auto-flag vs. escalation.' },
+            { name: 'Regulatory Compliance Agent', phase: 2, desc: 'AI monitors regulatory changes, assesses impact on your business, and generates compliance action items for legal review.', rec: 'Connect to regulatory feeds and your compliance framework. Agent surfaces changes; legal team assesses impact.' },
+            { name: 'Autonomous Legal Workflows', phase: 3, desc: 'Agents handle standard contract generation, compliance monitoring, risk scoring, and routine filings — lawyers handle strategy and novel cases.', rec: 'Legal counsel focuses on strategic litigation and ethical judgment. Agents handle operational legal work.' }
+        ]
+    }
+};
+
+const INDUSTRY_DATA = {
+    'Financial Services': { focus: ['Finance', 'Legal', 'Customer Service'], challenge: 'Regulatory compliance and data sensitivity require robust governance before scaling AI.', topScenarios: ['Risk & Compliance automation', 'KYC/AML agent workflows', 'Fraud detection triage'], quickWin: 'Deploy Copilot for financial reporting in Excel and contract review in Word — high-value, low-risk starting points.' },
+    Healthcare: { focus: ['Customer Service', 'IT', 'HR'], challenge: 'HIPAA compliance and clinician adoption require careful data governance and change management.', topScenarios: ['Patient intake automation', 'Clinical documentation assist', 'Prior authorization agents'], quickWin: 'Start with administrative processes — appointment management and referral coordination — to build trust before clinical workflows.' },
+    Manufacturing: { focus: ['IT', 'Finance', 'HR'], challenge: 'OT/IT convergence and shop floor adoption require bridging digital and operational teams.', topScenarios: ['Supply chain optimization', 'Quality inspection agents', 'Predictive maintenance'], quickWin: 'Deploy Copilot for operations reporting and safety documentation — immediate time savings with low risk.' },
+    Retail: { focus: ['Sales', 'Marketing', 'Customer Service'], challenge: 'Omnichannel integration and seasonal demand spikes require responsive AI that scales.', topScenarios: ['Personalized customer engagement', 'Inventory optimization agents', 'Dynamic pricing analysis'], quickWin: 'Start with Copilot for customer service — faster response times directly impact customer satisfaction and retention.' },
+    Technology: { focus: ['IT', 'Sales', 'Marketing'], challenge: 'Engineering workflow integration at scale while maintaining developer experience and autonomy.', topScenarios: ['Code review & documentation', 'Customer support automation', 'Product analytics agents'], quickWin: 'Deploy GitHub Copilot for engineering and M365 Copilot for go-to-market teams in parallel — both show fast ROI.' },
+    Energy: { focus: ['Finance', 'Legal', 'IT'], challenge: 'Legacy system integration, safety compliance, and the energy transition require cautious, data-driven AI adoption.', topScenarios: ['Asset management optimization', 'Regulatory compliance tracking', 'Safety incident analysis'], quickWin: 'Start with regulatory compliance documentation and financial reporting — high document volume makes AI impact immediate.' },
+    Telecommunications: { focus: ['Customer Service', 'IT', 'Sales'], challenge: 'Real-time system integration and massive customer scale require robust, reliable AI agents.', topScenarios: ['Network operations automation', 'Customer churn prediction', 'Service provisioning agents'], quickWin: 'Deploy a customer service agent for billing and plan inquiries — highest volume, most automatable customer interactions.' },
+    'Professional Services': { focus: ['Sales', 'HR', 'Finance'], challenge: 'Knowledge worker adoption and protecting intellectual property while leveraging AI for productivity.', topScenarios: ['Proposal generation automation', 'Knowledge management agents', 'Client engagement insights'], quickWin: 'Use Copilot for proposal creation and meeting summaries — consultants save 3-5 hours per week immediately.' },
+    'Public Sector': { focus: ['IT', 'HR', 'Customer Service'], challenge: 'Data sovereignty, procurement processes, and public accountability require transparent, auditable AI.', topScenarios: ['Citizen service automation', 'Policy compliance checking', 'Document processing agents'], quickWin: 'Start with internal productivity — email management and document drafting — before deploying citizen-facing AI.' },
+    Education: { focus: ['HR', 'IT', 'Customer Service'], challenge: 'Academic integrity, accessibility requirements, and diverse stakeholder needs require inclusive AI deployment.', topScenarios: ['Student support chatbots', 'Curriculum development assist', 'Administrative process automation'], quickWin: 'Deploy an admissions FAQ agent and use Copilot for administrative communications — high volume, immediate impact.' },
+    Media: { focus: ['Marketing', 'Sales', 'Legal'], challenge: 'Creative workflow integration and IP management require AI that enhances rather than replaces creative judgment.', topScenarios: ['Content creation at scale', 'Audience analytics agents', 'Rights management automation'], quickWin: 'Use Copilot for first-draft content creation and audience analysis — creative teams keep editorial control.' },
+    Transportation: { focus: ['IT', 'Finance', 'HR'], challenge: 'Real-time operations, safety requirements, and fleet management need reliable, always-on AI.', topScenarios: ['Route optimization agents', 'Fleet management automation', 'Compliance documentation'], quickWin: 'Start with compliance documentation and dispatch communication — reduce paperwork while maintaining safety standards.' }
+};
+
+// Assessment dimensions
+const DIMENSIONS = [
+    { id: 'copilotUsage', name: 'Copilot Adoption', desc: 'How are people using Microsoft 365 Copilot today?',
+      options: [
+          { phase: 1, label: 'Getting Started', desc: 'Few people use Copilot. Mostly experimenting or in pilot.', score: 1 },
+          { phase: 1, label: 'Growing', desc: 'Many teams use Copilot for basic tasks — emails, summaries, documents.', score: 2 },
+          { phase: 2, label: 'Established', desc: 'Copilot is part of daily work. Most teams use it regularly with clear use cases.', score: 3 },
+          { phase: 3, label: 'Embedded', desc: 'Copilot usage is universal. It\'s how work gets done — deeply integrated into workflows.', score: 4 }
+      ]
+    },
+    { id: 'agents', name: 'AI Agents', desc: 'Are you using AI agents (Copilot Studio, custom bots, automation)?',
+      options: [
+          { phase: 1, label: 'Not Yet', desc: 'No AI agents deployed. Maybe exploring what\'s possible.', score: 1 },
+          { phase: 1, label: 'Piloting', desc: '1-3 agents in pilot (e.g. IT helpdesk bot, HR FAQ).', score: 2 },
+          { phase: 2, label: 'Scaling', desc: 'Multiple agents in production across several functions. Expanding use cases.', score: 3 },
+          { phase: 3, label: 'Orchestrated', desc: 'Agents handle complex multi-step workflows. Cross-function agent orchestration in place.', score: 4 }
+      ]
+    },
+    { id: 'governance', name: 'AI Governance', desc: 'How does your organization govern AI usage?',
+      options: [
+          { phase: 1, label: 'Informal', desc: 'No formal AI policies. People use AI based on personal judgment.', score: 1 },
+          { phase: 1, label: 'Basic Policies', desc: 'Acceptable use guidelines exist. Basic data protection for AI tools.', score: 2 },
+          { phase: 2, label: 'Structured', desc: 'AI CoE in place. Decision rights defined. Monitoring and audit trails active.', score: 3 },
+          { phase: 3, label: 'Board-Level', desc: 'AI governance at executive/board level. Continuous compliance, responsible AI embedded in culture.', score: 4 }
+      ]
+    },
+    { id: 'data', name: 'Data Readiness', desc: 'How ready is your data estate for AI?',
+      options: [
+          { phase: 1, label: 'Siloed', desc: 'Data is scattered across systems. Inconsistent quality. Limited AI access.', score: 1 },
+          { phase: 1, label: 'Consolidating', desc: 'Starting to bring data together. Some integration, permissions partially configured.', score: 2 },
+          { phase: 2, label: 'AI-Ready', desc: 'Data platform in place (e.g. Fabric). Good quality, proper governance, accessible to AI.', score: 3 },
+          { phase: 3, label: 'Real-Time', desc: 'Full data integration with real-time pipelines. AI grounding is excellent. Data is a strategic asset.', score: 4 }
+      ]
+    },
+    { id: 'culture', name: 'AI Culture & Skills', desc: 'How does your workforce engage with AI?',
+      options: [
+          { phase: 1, label: 'Curious but Cautious', desc: 'Some interest in AI, but limited training. Most employees haven\'t changed how they work.', score: 1 },
+          { phase: 1, label: 'Training Underway', desc: 'AI training programs launched. Champions identified. Growing awareness.', score: 2 },
+          { phase: 2, label: 'AI-Fluent', desc: 'Most teams are AI-proficient. AI skills in job descriptions. Regular upskilling.', score: 3 },
+          { phase: 3, label: 'AI-Native', desc: 'Continuous learning culture. AI oversight is a recognized skill. Fusion roles exist.', score: 4 }
+      ]
+    },
+    { id: 'leadership', name: 'Executive Sponsorship', desc: 'How invested is leadership in AI transformation?',
+      options: [
+          { phase: 1, label: 'Exploring', desc: 'Some leaders are interested but no formal mandate or budget for AI.', score: 1 },
+          { phase: 1, label: 'Supportive', desc: 'C-level sponsor identified. AI is on the leadership agenda. Some budget allocated.', score: 2 },
+          { phase: 2, label: 'Driving', desc: 'CEO/CTO actively driving AI strategy. AI transformation has dedicated budget and KPIs.', score: 3 },
+          { phase: 3, label: 'Visionary', desc: 'Board-level AI oversight. AI is central to corporate strategy. Organization is redesigning around AI.', score: 4 }
+      ]
+    }
+];
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let state = {
+    company: '', industry: '',
+    assessSelections: {},
+    assessPhase: null,
+    stratQ1: '', stratQ2: '',
+    activeFn: null
+};
+
+// ═══════════════════════════════════════
+// WELCOME
+// ═══════════════════════════════════════
+function checkWelcome() {
+    const name = document.getElementById('companyName').value.trim();
+    const ind = document.getElementById('industry').value;
+    document.getElementById('welcomeBtn').disabled = !(name && ind);
+}
+
+function startJourney() {
+    state.company = document.getElementById('companyName').value.trim();
+    state.industry = document.getElementById('industry').value;
+    if (!state.company || !state.industry) return;
+
+    // Unlock steps
+    document.querySelectorAll('.step-tab').forEach(t => t.classList.remove('locked'));
+
+    // Build content
+    buildLearnPage();
+    buildExplorePage();
+    buildAssessPage();
+    goStep('learn');
+}
+
+// ═══════════════════════════════════════
+// LEARN PAGE
+// ═══════════════════════════════════════
+function buildLearnPage() {
+    const ind = INDUSTRY_DATA[state.industry];
+    if (!ind) return;
+    const ctx = document.getElementById('industryContext');
+    ctx.innerHTML = `
+        <h3 style="font-size:18px; font-weight:700; margin-bottom:12px; color:var(--dark-blue)">🏢 What This Means for ${state.industry}</h3>
+        <p style="font-size:14px; line-height:1.7; margin-bottom:16px">${ind.challenge}</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+            <div style="padding:16px; background:var(--g10); border-radius:10px">
+                <strong style="font-size:13px; color:var(--dark-blue)">🎯 Top Scenarios for Your Industry</strong>
+                <ul style="margin-top:8px; padding-left:18px; font-size:13px; line-height:1.8">${ind.topScenarios.map(s => `<li>${s}</li>`).join('')}</ul>
+            </div>
+            <div style="padding:16px; background:var(--g10); border-radius:10px">
+                <strong style="font-size:13px; color:var(--dark-blue)">⚡ Quick Win to Start</strong>
+                <p style="margin-top:8px; font-size:13px; line-height:1.6">${ind.quickWin}</p>
+            </div>
+        </div>
+        <div style="margin-top:16px; padding:14px; background:linear-gradient(135deg,#DFF6DD,#E8F5E9); border-radius:10px; border-left:3px solid var(--green)">
+            <strong style="font-size:13px; color:#0B6A0B">💡 Microsoft Recommends Starting With:</strong>
+            <span style="font-size:14px"> ${ind.focus.join(', ')}</span> — these functions show the highest AI impact in ${state.industry}.
+        </div>`;
+}
+
+// ═══════════════════════════════════════
+// EXPLORE PAGE
+// ═══════════════════════════════════════
+function buildExplorePage() {
+    document.getElementById('exploreIndustry').textContent = state.industry;
+    const ind = INDUSTRY_DATA[state.industry];
+    document.getElementById('industryBanner').innerHTML = `<strong>🏢 ${state.industry}:</strong> ${ind.challenge} <br><strong>Recommended focus:</strong> ${ind.focus.join(', ')}`;
+
+    const tabsEl = document.getElementById('fnTabs');
+    const fns = Object.keys(FUNCTIONS);
+    // Put industry-focus functions first
+    const sorted = [...ind.focus, ...fns.filter(f => !ind.focus.includes(f))];
+
+    tabsEl.innerHTML = sorted.map((fn, i) => {
+        const isIndustryFocus = ind.focus.includes(fn);
+        return `<div class="fn-tab ${i === 0 ? 'active' : ''}" data-fn="${fn}" onclick="selectFn('${fn}')">${FUNCTIONS[fn].icon} ${fn}${isIndustryFocus ? ' ★' : ''}</div>`;
+    }).join('');
+
+    state.activeFn = sorted[0];
+    renderScenarios(sorted[0]);
+}
+
+function selectFn(fn) {
+    state.activeFn = fn;
+    document.querySelectorAll('.fn-tab').forEach(t => t.classList.toggle('active', t.dataset.fn === fn));
+    renderScenarios(fn);
+}
+
+function renderScenarios(fn) {
+    const grid = document.getElementById('scenarioGrid');
+    const scenarios = FUNCTIONS[fn].scenarios;
+    grid.innerHTML = scenarios.map(sc => `
+        <div class="scenario-card">
+            <span class="sc-phase p${sc.phase}">Phase ${sc.phase} · ${PHASES[sc.phase].pattern}</span>
+            <h4>${sc.name}</h4>
+            <p>${sc.desc}</p>
+            <div class="sc-rec"><strong>🚀 Microsoft Recommendation:</strong> ${sc.rec}</div>
+        </div>
+    `).join('');
+}
+
+// ═══════════════════════════════════════
+// ASSESS PAGE
+// ═══════════════════════════════════════
+function buildAssessPage() {
+    const container = document.getElementById('assessCards');
+    container.innerHTML = DIMENSIONS.map(dim => `
+        <div class="assess-dimension" id="dim-${dim.id}">
+            <h3>${dim.name}</h3>
+            <div class="dim-desc">${dim.desc}</div>
+            <div class="option-cards">
+                ${dim.options.map((opt, i) => `
+                    <div class="opt-card" data-dim="${dim.id}" data-idx="${i}" onclick="selectOption('${dim.id}', ${i})">
+                        <div class="opt-phase" style="color:${PHASES[opt.phase].color}">Phase ${opt.phase}</div>
+                        <div class="opt-label">${opt.label}</div>
+                        <div class="opt-desc">${opt.desc}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+function selectOption(dimId, idx) {
+    state.assessSelections[dimId] = idx;
+    // Update UI
+    document.querySelectorAll(`[data-dim="${dimId}"]`).forEach(c => c.classList.remove('selected'));
+    document.querySelector(`[data-dim="${dimId}"][data-idx="${idx}"]`).classList.add('selected');
+
+    // Check if all dimensions selected
+    if (Object.keys(state.assessSelections).length === DIMENSIONS.length) {
+        computePhase();
+        document.getElementById('toStrategyBtn').disabled = false;
+    }
+}
+
+function computePhase() {
+    let totalScore = 0;
+    const dimResults = [];
+
+    DIMENSIONS.forEach(dim => {
+        const idx = state.assessSelections[dim.id];
+        const opt = dim.options[idx];
+        totalScore += opt.score;
+        dimResults.push({ name: dim.name, id: dim.id, selected: opt.label, score: opt.score, phase: opt.phase });
+    });
+
+    const avg = totalScore / DIMENSIONS.length;
+
+    // Gating rules: specific dimensions gate higher phases
+    const copilotScore = dimResults.find(d => d.id === 'copilotUsage').score;
+    const agentsScore = dimResults.find(d => d.id === 'agents').score;
+    const governanceScore = dimResults.find(d => d.id === 'governance').score;
+    const dataScore = dimResults.find(d => d.id === 'data').score;
+
+    // 5-level phase determination:
+    // Phase 3 (Frontier): avg ≥ 3.5, agents ≥ 3, governance ≥ 3, data ≥ 3, copilot ≥ 3
+    // Phase 2→3: avg ≥ 2.8, agents ≥ 3 (scaling+) but missing a Phase 3 gate
+    // Phase 2 (Expansion): avg ≥ 2.2, agents ≥ 2, copilot ≥ 2 (using Copilot + piloting agents)
+    // Phase 1→2: avg > 1.5 (making progress but key pillars missing)
+    // Phase 1 (Foundation): early stage
+    let phase;
+    if (avg >= 3.5 && agentsScore >= 3 && governanceScore >= 3 && dataScore >= 3 && copilotScore >= 3) {
+        phase = 3;
+    } else if (avg >= 2.8 && agentsScore >= 3) {
+        phase = 2.5;
+    } else if (avg >= 2.2 && agentsScore >= 2 && copilotScore >= 2) {
+        phase = 2;
+    } else if (avg > 1.5) {
+        phase = 1.5;
+    } else {
+        phase = 1;
+    }
+
+    state.assessPhase = phase;
+    state.dimResults = dimResults;
+
+    const phaseInfo = PHASES[phase];
+    const resultEl = document.getElementById('assessResult');
+    resultEl.style.display = 'block';
+
+    // Build "why this phase" explanation for transition phases
+    const gateExplanations = [];
+    if (phase === 1) {
+        gateExplanations.push('Your organization is at the beginning of the AI journey — focus on building Copilot adoption and AI literacy');
+    } else if (phase === 1.5) {
+        if (copilotScore < 2) gateExplanations.push('Copilot adoption is still early — broader usage is needed to reach Phase 2');
+        if (agentsScore < 2) gateExplanations.push('No AI agents in pilot yet — agent experimentation is needed for Phase 2');
+        if (dataScore < 2) gateExplanations.push('Data is still siloed — consolidation is needed for AI to work effectively');
+        if (gateExplanations.length === 0) gateExplanations.push('Your overall maturity shows progress but key areas still need strengthening');
+    } else if (phase === 2) {
+        gateExplanations.push('Copilot is being used actively and agents are in pilot or production — you have human-agent teams forming');
+    } else if (phase === 2.5) {
+        if (governanceScore < 3) gateExplanations.push('AI governance needs to be more structured to reach Phase 3');
+        if (dataScore < 3) gateExplanations.push('Data readiness needs to reach AI-Ready level for Phase 3');
+        if (copilotScore < 3) gateExplanations.push('Copilot needs to be established across the organization for Phase 3');
+        if (gateExplanations.length === 0) gateExplanations.push('You are very close — complete your remaining foundations to reach Frontier');
+    } else {
+        gateExplanations.push('Your organization meets all the criteria for a Frontier Firm — agents, governance, data, and adoption are all mature');
+    }
+
+    resultEl.innerHTML = `
+        <div class="result-box ${phaseInfo.cssClass}">
+            <div class="phase-num">${phaseInfo.shortLabel}</div>
+            <h3>${phaseInfo.name}</h3>
+            <div class="pattern-text">${phaseInfo.pattern}</div>
+            <p>${phaseInfo.description}</p>
+            <div style="margin-top:16px; padding:14px; background:rgba(255,255,255,0.7); border-radius:10px; text-align:left; max-width:600px; margin-left:auto; margin-right:auto">
+                <strong style="font-size:12px; color:var(--dark-blue)">💡 Why this phase?</strong>
+                <ul style="margin-top:6px; padding-left:18px; font-size:13px; line-height:1.8; color:var(--g90)">
+                    ${gateExplanations.map(e => `<li>${e}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+        <div class="dim-scores">
+            ${dimResults.map(d => {
+                const color = d.phase === 1 ? 'var(--blue)' : d.phase === 2 ? 'var(--purple)' : 'var(--green)';
+                return `<div class="dim-score-card">
+                    <div class="dim-name">${d.name}</div>
+                    <div class="dim-value" style="color:${color}">${d.selected}</div>
+                    <div class="dim-label" style="color:${color}">Phase ${d.phase}</div>
+                </div>`;
+            }).join('')}
+        </div>`;
+
+    resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ═══════════════════════════════════════
+// REPORT
+// ═══════════════════════════════════════
+function buildReport() {
+    state.stratQ1 = document.getElementById('stratQ1').value.trim();
+    state.stratQ2 = document.getElementById('stratQ2').value.trim();
+
+    const phase = state.assessPhase || 1;
+    const phaseInfo = PHASES[phase];
+    const ind = INDUSTRY_DATA[state.industry];
+    const nextTarget = phase < 2 ? 2 : phase < 3 ? 3 : 3;
+    const nextInfo = PHASES[nextTarget];
+
+    // Identify strengths & gaps
+    const sorted = [...state.dimResults].sort((a, b) => b.score - a.score);
+    const strengths = sorted.slice(0, 2);
+    const gaps = sorted.slice(-2).reverse();
+
+    // Build recommendations based on gaps
+    const recommendations = [];
+    state.dimResults.forEach(d => {
+        if (d.score <= 2) {
+            const recMap = {
+                copilotUsage: { title: 'Accelerate Copilot Adoption', actions: ['Launch a Copilot Champions program (1 champion per 50 users)', 'Run function-specific use-case workshops', 'Create a "Prompt of the Week" program showcasing real wins', 'Set adoption targets and track weekly with leadership'] },
+                agents: { title: 'Launch AI Agent Pilots', actions: ['Identify 3 repetitive workflows ideal for agent automation', 'Deploy an IT Helpdesk Agent and HR FAQ Agent as first pilots', 'Measure ticket deflection rate and user satisfaction', 'Set a 90-day target: 40% automated resolution for pilot use cases'] },
+                governance: { title: 'Establish AI Governance Framework', actions: ['Form a cross-functional AI Governance Council', 'Publish an AI Acceptable Use Policy with responsible AI guidelines', 'Deploy Microsoft Purview for data protection and compliance monitoring', 'Define AI decision rights: what agents can do autonomously vs. requiring approval'] },
+                data: { title: 'Improve Data Readiness', actions: ['Run a 90-day Data Readiness Sprint: audit, clean, label, govern', 'Implement sensitivity labels and metadata standards', 'Deploy Microsoft Fabric for unified data analytics', 'Ensure SharePoint/OneDrive content is organized and current for Copilot grounding'] },
+                culture: { title: 'Build AI-Ready Culture', actions: ['Launch role-based AI training (not one-size-fits-all)', 'Include AI adoption metrics in team and individual OKRs', 'Create safe spaces to experiment: "AI Fridays" or hackathons', 'Frame AI as augmentation, not replacement, to address fears directly'] },
+                leadership: { title: 'Secure Executive AI Sponsorship', actions: ['Build a business case with ROI from Copilot adoption data', 'Demonstrate 3 AI wins that matter personally to your CEO/CFO', 'Request dedicated AI transformation budget at board level', 'Appoint a Chief AI Officer or AI Transformation Lead'] }
+            };
+            const rec = recMap[d.id];
+            if (rec) recommendations.push(rec);
+        }
+    });
+
+    // Phase-specific next steps
+    const nextStepsByPhase = {
+        1: [
+            { label: 'Now (0-3 months)', title: 'Build the Foundation', items: ['Deploy Copilot broadly and track adoption weekly', 'Run industry-specific use-case workshops', 'Establish AI governance policies and data protection', `Quick win for ${state.industry}: ${ind.quickWin}`] },
+            { label: 'Next (3-6 months)', title: 'Pilot Agents', items: ['Deploy 3-5 agent pilots in high-impact areas', 'Launch Copilot Champions network', 'Define AI decision rights per function', `Focus on: ${ind.focus.join(', ')}`] },
+            { label: 'Future (6-12 months)', title: 'Scale to Phase 2', items: ['Scale agents to 10+ covering multiple functions', 'Integrate agents with line-of-business systems', 'Establish AI CoE with dedicated resources', 'Measure and report AI business impact to executives'] }
+        ],
+        1.5: [
+            { label: 'Now (0-3 months)', title: 'Close the Gaps', items: ['Accelerate Copilot adoption — target 50%+ active usage', 'Expand agent pilots to 3-5 use cases', 'Strengthen data governance and quality', `Quick win: ${ind.quickWin}`] },
+            { label: 'Next (3-6 months)', title: 'Reach Phase 2', items: ['Achieve broad Copilot usage across key functions', 'Move agents from pilot to production', 'Formalize AI governance with decision rights', `Focus on: ${ind.focus.join(', ')}`] },
+            { label: 'Future (6-12 months)', title: 'Build Agent Teams', items: ['Define human-agent team structures', 'Deploy cross-function agent collaboration', 'Integrate agents with line-of-business systems', 'Measure and communicate AI business impact'] }
+        ],
+        2: [
+            { label: 'Now (0-3 months)', title: 'Deepen Integration', items: ['Ensure 65%+ of licensed users are active on Copilot', 'Expand agent coverage to new functions', 'Implement agent performance monitoring', `Focus on: ${ind.focus.join(', ')}`] },
+            { label: 'Next (3-6 months)', title: 'Build Agent Teams', items: ['Define human-agent team structures per function', 'Deploy cross-function agent orchestration', 'Establish agent governance dashboards', 'Train workforce on working alongside agents'] },
+            { label: 'Future (6-12 months)', title: 'Approach Frontier', items: ['Pilot autonomous workflows in 2-3 functions', 'Redesign roles around AI-augmented work', 'Implement board-level AI governance reporting', 'Plan the "Work Chart" organizational model'] }
+        ],
+        2.5: [
+            { label: 'Now (0-3 months)', title: 'Complete the Foundations', items: ['Close remaining gaps in governance, data, or Copilot adoption', 'Pilot autonomous workflows in your strongest function', 'Start designing the "Work Chart" model', `Lead in: ${ind.focus[0]}`] },
+            { label: 'Next (3-6 months)', title: 'Scale Autonomy', items: ['Expand autonomous agent workflows to 3+ functions', 'Implement board-level AI governance reporting', 'Create fusion roles blending domain and AI expertise', 'Deploy advanced agent orchestration'] },
+            { label: 'Future (6-12 months)', title: 'Achieve Frontier', items: ['Full agent orchestration across all key workflows', 'Organization redesigned around AI-augmented model', 'Continuous optimization and innovation culture', 'Become an industry reference for AI transformation'] }
+        ],
+        3: [
+            { label: 'Now (0-3 months)', title: 'Optimize Operations', items: ['Ensure agent orchestration covers all key workflows', 'Implement continuous agent performance optimization', 'Establish AI ethics board with external advisors', `Lead your industry: ${ind.topScenarios[0]}`] },
+            { label: 'Next (3-6 months)', title: 'Scale Autonomy', items: ['Expand autonomous operations to all functions', 'Implement the "Work Chart" organizational model', 'Create fusion roles blending domain and AI expertise', 'Benchmark against Frontier Firm maturity targets'] },
+            { label: 'Future (6-12 months)', title: 'Lead the Industry', items: ['Achieve full Frontier Firm maturity', 'Share learnings and become an industry reference', 'Continuous innovation with emerging AI capabilities', 'Strategic AI investments for competitive advantage'] }
+        ]
+    };
+
+    const steps = nextStepsByPhase[phase];
+
+    // Build HTML
+    let html = `
+        <div class="card" style="background:linear-gradient(135deg,${phaseInfo.color}08,${phaseInfo.color}15); border:2px solid ${phaseInfo.color}40;">
+            <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px">
+                <div style="width:80px; height:80px; border-radius:50%; background:${phaseInfo.color}; color:white; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:900">${phaseInfo.shortLabel}</div>
+                <div>
+                    <h2 style="font-size:24px; font-weight:800; color:var(--dark-blue)">Frontier Firm Report: ${state.company}</h2>
+                    <p style="font-size:16px; color:${phaseInfo.color}; font-weight:700">${phaseInfo.label}: ${phaseInfo.name} — ${phaseInfo.pattern}</p>
+                    <p style="font-size:13px; color:var(--g90)">${state.industry} · Generated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
+            </div>
+            <p style="font-size:14px; line-height:1.7">${phaseInfo.description}</p>
+        </div>
+
+        <div class="report-section">
+            <h3>📊 Your Assessment Results</h3>
+            <div class="dim-scores" style="margin-top:0">
+                ${state.dimResults.map(d => {
+                    const color = d.phase === 1 ? 'var(--blue)' : d.phase === 2 ? 'var(--purple)' : 'var(--green)';
+                    return `<div class="dim-score-card">
+                        <div class="dim-name">${d.name}</div>
+                        <div class="dim-value" style="color:${color}; font-size:22px">${d.selected}</div>
+                        <div class="dim-label" style="color:${color}">Phase ${d.phase}</div>
+                    </div>`;
+                }).join('')}
+            </div>
+            <div style="margin-top:16px; display:grid; grid-template-columns:1fr 1fr; gap:12px">
+                <div style="padding:14px; background:#DFF6DD; border-radius:10px; border-left:3px solid var(--green)">
+                    <strong style="color:#0B6A0B; font-size:12px">✅ STRENGTHS</strong>
+                    ${strengths.map(s => `<div style="margin-top:6px; font-size:13px"><strong>${s.name}:</strong> ${s.selected}</div>`).join('')}
+                </div>
+                <div style="padding:14px; background:#FFF4CE; border-radius:10px; border-left:3px solid var(--yellow)">
+                    <strong style="color:#8A6914; font-size:12px">⚠️ AREAS TO DEVELOP</strong>
+                    ${gaps.map(g => `<div style="margin-top:6px; font-size:13px"><strong>${g.name}:</strong> ${g.selected}</div>`).join('')}
+                </div>
+            </div>
+        </div>
+
+        <div class="report-section">
+            <h3>🏢 ${state.industry} Context</h3>
+            <p style="font-size:14px; line-height:1.7; margin-bottom:12px">${ind.challenge}</p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+                <div style="padding:14px; background:var(--g10); border-radius:10px">
+                    <strong style="font-size:12px; color:var(--dark-blue)">🎯 Top Industry Scenarios</strong>
+                    <ul style="margin-top:6px; padding-left:18px; font-size:13px; line-height:1.8">${ind.topScenarios.map(s => `<li>${s}</li>`).join('')}</ul>
+                </div>
+                <div style="padding:14px; background:var(--g10); border-radius:10px">
+                    <strong style="font-size:12px; color:var(--dark-blue)">⚡ Recommended Focus Functions</strong>
+                    <ul style="margin-top:6px; padding-left:18px; font-size:13px; line-height:1.8">${ind.focus.map(f => `<li>${FUNCTIONS[f].icon} ${f}</li>`).join('')}</ul>
+                </div>
+            </div>
+        </div>`;
+
+    if (recommendations.length > 0) {
+        html += `<div class="report-section"><h3>💡 Key Recommendations</h3>`;
+        html += recommendations.map(r => `
+            <div style="margin-bottom:16px; padding:16px; background:white; border-radius:10px; border-left:4px solid var(--blue); box-shadow:var(--shadow)">
+                <h4 style="font-size:15px; margin-bottom:8px">${r.title}</h4>
+                <ul style="padding-left:18px; font-size:13px; line-height:1.8">${r.actions.map(a => `<li>${a}</li>`).join('')}</ul>
+            </div>`).join('');
+        html += `</div>`;
+    }
+
+    html += `
+        <div class="report-section">
+            <h3>🗺️ Your Roadmap to ${phase < 3 ? `${nextInfo.label}: ${nextInfo.name}` : 'Continued Excellence'}</h3>
+            <div class="next-steps-grid">
+                ${steps.map((s, i) => `
+                    <div class="next-step s${i + 1}">
+                        <div style="font-size:12px; font-weight:700; color:var(--g90); margin-bottom:4px">${s.label}</div>
+                        <h4>${s.title}</h4>
+                        <ul style="text-align:left; padding-left:16px; font-size:12px; line-height:1.7; margin-top:8px">${s.items.map(item => `<li>${item}</li>`).join('')}</ul>
+                    </div>
+                `).join('')}
+            </div>
+        </div>`;
+
+    if (state.stratQ1 || state.stratQ2) {
+        html += `<div class="report-section"><h3>🎯 Strategic Priorities from ${state.company}</h3>`;
+        if (state.stratQ1) html += `<div style="padding:16px; background:var(--g10); border-radius:10px; margin-bottom:12px; border-left:3px solid var(--blue)"><strong style="font-size:12px; color:var(--dark-blue)">DESIRED BUSINESS OUTCOME</strong><p style="margin-top:6px; font-size:14px; line-height:1.7">${escapeHtml(state.stratQ1)}</p></div>`;
+        if (state.stratQ2) html += `<div style="padding:16px; background:var(--g10); border-radius:10px; border-left:3px solid var(--orange)"><strong style="font-size:12px; color:#8A4B00">BIGGEST BARRIER</strong><p style="margin-top:6px; font-size:14px; line-height:1.7">${escapeHtml(state.stratQ2)}</p></div>`;
+        html += `</div>`;
+    }
+
+    html += `
+        <div class="card" style="text-align:center; background:linear-gradient(135deg, var(--light-blue), #E3F2FD); border:1px solid #B3D4FC">
+            <h3 style="font-size:18px; margin-bottom:8px; color:var(--dark-blue)">Ready to Take the Next Step?</h3>
+            <p style="font-size:14px; color:var(--g90); margin-bottom:16px">Download this report and share it with your Microsoft team to start building your personalized Frontier Firm transformation plan.</p>
+            <button class="primary-btn" onclick="exportPDF()">📥 Download PDF Report</button>
+        </div>`;
+
+    document.getElementById('reportContent').innerHTML = html;
+    document.getElementById('pdfBtn').style.display = 'inline-block';
+    goStep('report');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
+function goStep(step) {
+    const tab = document.querySelector(`[data-step="${step}"]`);
+    if (tab && tab.classList.contains('locked')) return;
+
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.step-tab').forEach(t => t.classList.remove('active'));
+
+    document.getElementById('page-' + step).classList.add('active');
+    if (tab) tab.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════
+// PDF EXPORT
+// ═══════════════════════════════════════
+async function exportPDF() {
+    if (!state.assessPhase) { alert('Please complete the assessment first.'); return; }
+
+    const bar = document.getElementById('pdfBar');
+    const pct = document.getElementById('pdfPct');
+    bar.style.display = 'block';
+    pct.textContent = '10%';
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pw = pdf.internal.pageSize.getWidth();
+        const ph = pdf.internal.pageSize.getHeight();
+        const m = 15;
+        const cw = pw - m * 2;
+
+        const phase = state.assessPhase;
+        const phaseInfo = PHASES[phase];
+        const ind = INDUSTRY_DATA[state.industry];
+
+        // Unicode-safe text helper (jsPDF Helvetica doesn't support → or —)
+        const safe = (t) => String(t).replace(/\u2192/g, '>').replace(/\u2014/g, '-').replace(/\u2013/g, '-');
+
+        // Color helpers
+        const hexToRgb = (hex) => {
+            const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            return [r, g, b];
+        };
+        const phaseRgb = hexToRgb(phaseInfo.color);
+        const dimColors = { 1: [0,120,212], 2: [92,45,145], 3: [16,124,16] };
+
+        // Rounded rect helper
+        function roundRect(x, y, w, h, r, fill, stroke) {
+            pdf.setLineWidth(0.3);
+            const x2 = x + w, y2 = y + h;
+            pdf.lines([[w - 2*r, 0], [r, 0, r, r, 0], [0, h - 2*r], [0, r, -r, r, 0], [-(w - 2*r), 0], [-r, 0, -r, -r, 0], [0, -(h - 2*r)], [0, -r, r, -r, 0]], x + r, y, [1,1], fill && stroke ? 'FD' : fill ? 'F' : 'S');
+        }
+
+        // ── Title Page ──
+        pdf.setFillColor(0, 59, 115);
+        pdf.rect(0, 0, pw, ph, 'F');
+
+        // Decorative accent bar
+        pdf.setFillColor(...phaseRgb);
+        pdf.rect(0, ph * 0.45, pw, 3, 'F');
+
+        // Top label
+        pdf.setTextColor(180, 200, 230);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('MICROSOFT  |  FRONTIER FIRM TRANSFORMATION', pw / 2, 35, { align: 'center' });
+
+        // Main title
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(42);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Frontier Firm', pw / 2, 78, { align: 'center' });
+        pdf.text('Explorer Report', pw / 2, 98, { align: 'center' });
+
+        // Divider line
+        pdf.setDrawColor(100, 150, 220);
+        pdf.setLineWidth(0.5);
+        pdf.line(pw/2 - 40, 110, pw/2 + 40, 110);
+
+        // Company & industry
+        pdf.setFontSize(18);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(safe(state.company), pw / 2, 125, { align: 'center' });
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(180, 200, 230);
+        pdf.text(safe(state.industry), pw / 2, 135, { align: 'center' });
+
+        // Phase badge circle
+        const cx = pw / 2, cy = 172;
+        pdf.setFillColor(...phaseRgb);
+        pdf.circle(cx, cy, 20, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(20);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(safe(phaseInfo.shortLabel), cx, cy + 7, { align: 'center' });
+
+        // Phase label below badge
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(16);
+        pdf.text(safe(`${phaseInfo.label}: ${phaseInfo.name}`), pw / 2, cy + 32, { align: 'center' });
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(180, 200, 230);
+        pdf.text(safe(phaseInfo.pattern), pw / 2, cy + 42, { align: 'center' });
+
+        // Date
+        pdf.setFontSize(9);
+        pdf.setTextColor(140, 170, 210);
+        pdf.text(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), pw / 2, ph - 20, { align: 'center' });
+
+        pct.textContent = '20%';
+
+        // ── Helper ──
+        function addHeader(title) {
+            pdf.setFillColor(0, 59, 115);
+            pdf.rect(0, 0, pw, 14, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(safe(`${state.company}  |  Frontier Firm Report`), m, 9);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(safe(title), pw - m, 9, { align: 'right' });
+            // Accent line
+            pdf.setFillColor(...phaseRgb);
+            pdf.rect(0, 14, pw, 1, 'F');
+            pdf.setTextColor(0, 0, 0);
+            return 22;
+        }
+
+        function sectionTitle(text, yPos) {
+            pdf.setFillColor(...phaseRgb);
+            pdf.rect(m, yPos - 4, 3, 10, 'F');
+            pdf.setFontSize(15);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(0, 40, 85);
+            pdf.text(safe(text), m + 7, yPos + 4);
+            pdf.setTextColor(0, 0, 0);
+            return yPos + 14;
+        }
+
+        // ── Page 2: Assessment Results ──
+        pdf.addPage();
+        let y = addHeader('Assessment Results');
+
+        y = sectionTitle('Assessment Results', y);
+
+        // Phase summary box
+        pdf.setFillColor(240, 245, 252);
+        pdf.setDrawColor(...phaseRgb);
+        pdf.setLineWidth(0.6);
+        pdf.roundedRect(m, y, cw, 32, 3, 3, 'FD');
+
+        // Mini phase badge inside box
+        pdf.setFillColor(...phaseRgb);
+        pdf.circle(m + 16, y + 16, 10, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(safe(phaseInfo.shortLabel), m + 16, y + 20, { align: 'center' });
+
+        // Phase text
+        pdf.setTextColor(0, 40, 85);
+        pdf.setFontSize(13);
+        pdf.text(safe(`${phaseInfo.label}: ${phaseInfo.name}`), m + 32, y + 12);
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(80, 80, 80);
+        pdf.text(safe(phaseInfo.pattern), m + 32, y + 19);
+
+        // Description
+        pdf.setFontSize(8);
+        const descLines = pdf.splitTextToSize(safe(phaseInfo.description), cw - 38);
+        pdf.text(descLines, m + 32, y + 25);
+
+        y += 38;
+
+        // Dimension score cards (2 columns)
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 40, 85);
+        pdf.text('Dimension Scores', m, y + 4);
+        y += 10;
+
+        const cardW = (cw - 6) / 2;
+        const cardH = 18;
+        state.dimResults.forEach((d, i) => {
+            const col = i % 2;
+            const row = Math.floor(i / 2);
+            const cx = m + col * (cardW + 6);
+            const cy = y + row * (cardH + 5);
+
+            // Card background
+            pdf.setFillColor(248, 248, 250);
+            pdf.setDrawColor(220, 220, 225);
+            pdf.setLineWidth(0.3);
+            pdf.roundedRect(cx, cy, cardW, cardH, 2, 2, 'FD');
+
+            // Phase color indicator bar
+            const dc = dimColors[d.phase] || [100,100,100];
+            pdf.setFillColor(...dc);
+            pdf.rect(cx, cy, 3, cardH, 'F');
+
+            // Text
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(9);
+            pdf.setTextColor(40, 40, 50);
+            pdf.text(safe(d.name), cx + 7, cy + 7);
+
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(8);
+            pdf.setTextColor(...dc);
+            pdf.text(safe(`${d.selected} (Phase ${d.phase})`), cx + 7, cy + 13);
+        });
+
+        y += Math.ceil(state.dimResults.length / 2) * (cardH + 5) + 6;
+
+        // Score bar visualization
+        if (y < ph - 45) {
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(0, 40, 85);
+            pdf.text('Maturity Overview', m, y + 4);
+            y += 10;
+
+            state.dimResults.forEach((d, i) => {
+                if (y > ph - 20) return;
+                const barW = cw - 55;
+                const fillW = (d.score / 4) * barW;
+
+                pdf.setFontSize(7);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setTextColor(60, 60, 70);
+                pdf.text(safe(d.name), m, y + 3);
+
+                // Background bar
+                pdf.setFillColor(230, 232, 236);
+                pdf.roundedRect(m + 52, y, barW, 5, 1.5, 1.5, 'F');
+
+                // Fill bar
+                const dc = dimColors[d.phase] || [100,100,100];
+                pdf.setFillColor(...dc);
+                if (fillW > 3) pdf.roundedRect(m + 52, y, fillW, 5, 1.5, 1.5, 'F');
+
+                // Score
+                pdf.setFontSize(7);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(...dc);
+                pdf.text(`${d.score}/4`, m + 55 + barW, y + 4);
+
+                y += 9;
+            });
+        }
+
+        pct.textContent = '35%';
+
+        // ── Page 3: Industry Context ──
+        pdf.addPage();
+        y = addHeader('Industry Context');
+
+        y = sectionTitle(`${state.industry} Industry Context`, y);
+
+        // Challenge box
+        pdf.setFillColor(245, 247, 252);
+        pdf.setDrawColor(180, 195, 220);
+        pdf.setLineWidth(0.3);
+        pdf.roundedRect(m, y, cw, 22, 2, 2, 'FD');
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 59, 115);
+        pdf.text('INDUSTRY CHALLENGE', m + 5, y + 6);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(40, 40, 50);
+        const chalLines = pdf.splitTextToSize(safe(ind.challenge), cw - 10);
+        pdf.text(chalLines, m + 5, y + 12);
+        y += 28;
+
+        // Top Scenarios section
+        pdf.setFillColor(...phaseRgb);
+        pdf.rect(m, y, 2, 6, 'F');
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 40, 85);
+        pdf.text('Top AI Scenarios', m + 6, y + 5);
+        y += 10;
+
+        ind.topScenarios.forEach(s => {
+            pdf.setFillColor(...phaseRgb);
+            pdf.circle(m + 4, y + 1, 1.2, 'F');
+            pdf.setFontSize(9);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(40, 40, 50);
+            pdf.text(safe(s), m + 9, y + 3);
+            y += 7;
+        });
+        y += 5;
+
+        // Focus Functions
+        pdf.setFillColor(...phaseRgb);
+        pdf.rect(m, y, 2, 6, 'F');
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 40, 85);
+        pdf.text('Recommended Focus Functions', m + 6, y + 5);
+        y += 10;
+
+        ind.focus.forEach(f => {
+            pdf.setFillColor(92, 45, 145);
+            pdf.circle(m + 4, y + 1, 1.2, 'F');
+            pdf.setFontSize(9);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(40, 40, 50);
+            pdf.text(safe(f), m + 9, y + 3);
+            y += 7;
+        });
+        y += 5;
+
+        // Quick Win box
+        pdf.setFillColor(232, 245, 233);
+        pdf.setDrawColor(16, 124, 16);
+        pdf.setLineWidth(0.4);
+        pdf.roundedRect(m, y, cw, 18, 2, 2, 'FD');
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(16, 124, 16);
+        pdf.text('QUICK WIN', m + 5, y + 6);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(40, 40, 50);
+        const qwLines = pdf.splitTextToSize(safe(ind.quickWin), cw - 10);
+        pdf.text(qwLines, m + 5, y + 12);
+
+        pct.textContent = '50%';
+
+        // ── Page 4: Key Scenarios by Function ──
+        pdf.addPage();
+        y = addHeader('Key Scenarios');
+
+        y = sectionTitle('Key AI Scenarios by Function', y);
+
+        ind.focus.forEach(fn => {
+            if (y > ph - 55) { pdf.addPage(); y = addHeader('Key Scenarios'); y += 4; }
+            const info = FUNCTIONS[fn];
+
+            // Function name with accent bar
+            pdf.setFillColor(0, 59, 115);
+            pdf.roundedRect(m, y, cw, 9, 2, 2, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(safe(fn), m + 5, y + 6);
+            y += 13;
+
+            info.scenarios.slice(0, 3).forEach(sc => {
+                if (y > ph - 30) { pdf.addPage(); y = addHeader('Key Scenarios'); y += 4; }
+
+                // Scenario card
+                pdf.setFillColor(250, 250, 252);
+                pdf.setDrawColor(220, 220, 228);
+                pdf.setLineWidth(0.2);
+                const scLines = pdf.splitTextToSize(safe(sc.rec), cw - 20);
+                const scH = 10 + scLines.length * 3.8;
+                pdf.roundedRect(m + 3, y, cw - 6, scH, 1.5, 1.5, 'FD');
+
+                // Phase badge
+                const scColor = dimColors[sc.phase] || [100,100,100];
+                pdf.setFillColor(...scColor);
+                pdf.circle(m + 9, y + 5, 3, 'F');
+                pdf.setTextColor(255, 255, 255);
+                pdf.setFontSize(6);
+                pdf.text(`P${sc.phase}`, m + 9, y + 6.5, { align: 'center' });
+
+                // Scenario name & description
+                pdf.setFontSize(9);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(40, 40, 50);
+                pdf.text(safe(sc.name), m + 16, y + 6);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(8);
+                pdf.setTextColor(80, 80, 90);
+                pdf.text(scLines, m + 16, y + 11);
+
+                y += scH + 3;
+            });
+            y += 4;
+        });
+
+        pct.textContent = '65%';
+
+        // ── Page 5: Recommendations ──
+        const sorted = [...state.dimResults].sort((a, b) => a.score - b.score);
+        const gaps = sorted.filter(g => g.score <= 2).slice(0, 3);
+        pdf.addPage();
+        y = addHeader('Recommendations');
+
+        y = sectionTitle('Key Recommendations', y);
+
+        // Intro text
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(80, 80, 90);
+        pdf.text(safe('Based on your assessment, here are the top areas to focus on:'), m, y + 2);
+        y += 10;
+
+        const recMap = {
+            copilotUsage: { title: 'Accelerate Copilot Adoption', icon: 'C', color: [0,120,212], items: ['Launch Champions program', 'Run use-case workshops', '"Prompt of the Week" program', 'Weekly adoption scorecards'] },
+            agents: { title: 'Launch AI Agent Pilots', icon: 'A', color: [92,45,145], items: ['Identify 3 repetitive workflows', 'Deploy IT Helpdesk & HR FAQ agents', 'Target 40% ticket deflection', 'Measure return rate'] },
+            governance: { title: 'Establish AI Governance', icon: 'G', color: [0,90,158], items: ['Form AI Governance Council', 'Publish Acceptable Use Policy', 'Deploy Microsoft Purview', 'Define AI decision rights'] },
+            data: { title: 'Improve Data Readiness', icon: 'D', color: [16,124,16], items: ['90-day Data Readiness Sprint', 'Sensitivity labels & metadata', 'Deploy Microsoft Fabric', 'Clean SharePoint content'] },
+            culture: { title: 'Build AI-Ready Culture', icon: 'K', color: [200,120,0], items: ['Role-based AI training', 'AI in OKRs', 'AI Fridays for experimentation', 'Frame AI as augmentation'] },
+            leadership: { title: 'Secure Executive Sponsorship', icon: 'L', color: [165,38,38], items: ['ROI business case', 'Personal CEO demo', 'Dedicated AI budget', 'Appoint AI Transformation Lead'] }
+        };
+
+        if (gaps.length === 0) {
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(16, 124, 16);
+            pdf.text(safe('All dimensions scored high! Focus on optimization and scaling.'), m, y + 4);
+            y += 14;
+        }
+
+        gaps.forEach(g => {
+            const rec = recMap[g.id];
+            if (!rec) return;
+            if (y > ph - 45) { pdf.addPage(); y = addHeader('Recommendations'); y += 4; }
+
+            const recH = 8 + rec.items.length * 6;
+
+            // Card with left color border
+            pdf.setFillColor(250, 250, 252);
+            pdf.setDrawColor(220, 220, 225);
+            pdf.setLineWidth(0.2);
+            pdf.roundedRect(m, y, cw, recH, 2, 2, 'FD');
+            pdf.setFillColor(...rec.color);
+            pdf.rect(m, y, 3, recH, 'F');
+
+            // Icon circle
+            pdf.setFillColor(...rec.color);
+            pdf.circle(m + 12, y + 6, 4, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(rec.icon, m + 12, y + 8, { align: 'center' });
+
+            // Title
+            pdf.setFontSize(11);
+            pdf.setTextColor(40, 40, 50);
+            pdf.text(safe(rec.title), m + 20, y + 8);
+
+            // Items
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(8);
+            pdf.setTextColor(70, 70, 80);
+            rec.items.forEach((item, idx) => {
+                pdf.text(safe(`  ${item}`), m + 20, y + 14 + idx * 5.5);
+            });
+
+            y += recH + 6;
+        });
+
+        // Summary box at bottom
+        if (y < ph - 35) {
+            y += 4;
+            pdf.setFillColor(240, 245, 252);
+            pdf.setDrawColor(...phaseRgb);
+            pdf.setLineWidth(0.4);
+            pdf.roundedRect(m, y, cw, 20, 2, 2, 'FD');
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(0, 59, 115);
+            pdf.text('NEXT MILESTONE', m + 5, y + 7);
+            const nextTarget = phase < 2 ? 2 : phase < 3 ? 3 : 3;
+            const nextMilestone = phase < 3 ? safe(`Target: ${PHASES[nextTarget].label} - ${PHASES[nextTarget].name}`) : 'Continue optimizing your Frontier Firm operations';
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(9);
+            pdf.setTextColor(40, 40, 50);
+            pdf.text(safe(nextMilestone), m + 5, y + 14);
+        }
+
+        pct.textContent = '80%';
+
+        // ── Page 6: Strategy & Next Steps ──
+        if (state.stratQ1 || state.stratQ2) {
+            pdf.addPage();
+            y = addHeader('Strategic Priorities');
+
+            y = sectionTitle(`Strategic Priorities`, y);
+
+            if (state.stratQ1) {
+                // Outcome box
+                pdf.setFillColor(240, 245, 252);
+                pdf.setDrawColor(0, 120, 212);
+                pdf.setLineWidth(0.4);
+                const lines1 = pdf.splitTextToSize(safe(state.stratQ1), cw - 14);
+                const boxH1 = 10 + lines1.length * 4.5;
+                pdf.roundedRect(m, y, cw, boxH1, 2, 2, 'FD');
+                pdf.setFillColor(0, 120, 212);
+                pdf.rect(m, y, 3, boxH1, 'F');
+                pdf.setFontSize(7);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(0, 90, 180);
+                pdf.text('DESIRED BUSINESS OUTCOME', m + 7, y + 6);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(9);
+                pdf.setTextColor(40, 40, 50);
+                pdf.text(lines1, m + 7, y + 12);
+                y += boxH1 + 8;
+            }
+            if (state.stratQ2) {
+                // Barrier box
+                pdf.setFillColor(255, 248, 240);
+                pdf.setDrawColor(200, 120, 0);
+                pdf.setLineWidth(0.4);
+                const lines2 = pdf.splitTextToSize(safe(state.stratQ2), cw - 14);
+                const boxH2 = 10 + lines2.length * 4.5;
+                pdf.roundedRect(m, y, cw, boxH2, 2, 2, 'FD');
+                pdf.setFillColor(200, 120, 0);
+                pdf.rect(m, y, 3, boxH2, 'F');
+                pdf.setFontSize(7);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(160, 90, 0);
+                pdf.text('BIGGEST BARRIER', m + 7, y + 6);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(9);
+                pdf.setTextColor(40, 40, 50);
+                pdf.text(lines2, m + 7, y + 12);
+                y += boxH2 + 8;
+            }
+        }
+
+        pct.textContent = '90%';
+
+        // ── Capture the visual report page as image for last page ──
+        const reportEl = document.getElementById('reportContent');
+        const canvas = await html2canvas(reportEl, { scale: 1.2, useCORS: true, logging: false, backgroundColor: '#FAF9F8' });
+        const imgData = canvas.toDataURL('image/jpeg', 0.8);
+        const imgW = cw;
+        const imgH = (canvas.height / canvas.width) * imgW;
+
+        let remainingH = imgH;
+        let srcY = 0;
+        while (remainingH > 0) {
+            pdf.addPage();
+            const yTop = addHeader('Visual Summary');
+            const available = ph - yTop - m;
+            const sliceH = Math.min(remainingH, available);
+            const ratio = sliceH / imgH;
+            const srcH = canvas.height * ratio;
+
+            const sliceCanvas = document.createElement('canvas');
+            sliceCanvas.width = canvas.width;
+            sliceCanvas.height = srcH;
+            sliceCanvas.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+            pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.8), 'JPEG', m, yTop, imgW, sliceH);
+
+            srcY += srcH;
+            remainingH -= sliceH;
+        }
+
+        pct.textContent = '100%';
+
+        const fileName = `${state.company.replace(/[^a-zA-Z0-9]/g, '_')}_Frontier_Firm_Report.pdf`;
+        pdf.save(fileName);
+    } catch (e) {
+        console.error('PDF error:', e);
+        alert('Error generating PDF. Check console for details.');
+    } finally {
+        setTimeout(() => { bar.style.display = 'none'; }, 1500);
+    }
+}
+</script>
+</body>
+</html>
